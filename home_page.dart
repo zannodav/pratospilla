@@ -372,12 +372,12 @@ class _HomePageState extends State<HomePage> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Esplora gli spazi della baita e i paesaggi del territorio',
+                      'Esplora gli spazi interni e i paesaggi del territorio',
                       style: TextStyle(fontSize: 15, color: Colors.black54),
                     ),
                   ],
                 ),
-                if (_viewModel.isSignedIn)
+                if (_viewModel.isSignedIn && _viewModel.isAdmin)
                   ElevatedButton.icon(
                     onPressed: () => _showAddImageDialog(context),
                     icon: const Icon(Icons.add_a_photo, size: 20),
@@ -488,7 +488,8 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                   ),
                                 ),
-                                if (_viewModel.isSignedIn) ...[
+                                if (_viewModel.isSignedIn &&
+                                    _viewModel.isAdmin) ...[
                                   Positioned(
                                     top: 8,
                                     right: 8,
@@ -600,7 +601,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: category,
+                initialValue: category,
                 decoration: const InputDecoration(labelText: 'Categoria'),
                 items: ['Interni', 'Territorio']
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -733,7 +734,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
-                'Baita Esclusiva',
+                'Alloggi Esclusivi',
                 style:
                     TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
               ),
@@ -743,8 +744,8 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 16),
         const Text(
           'Vivi un\'esperienza indimenticabile al confine tra Emilia-Romagna e Toscana. '
-          'Questa accogliente baita è il rifugio perfetto per staccare dal caos cittadino. '
-          'Immersa nella natura incontaminata, potrai svegliarti col canto degli uccellini, '
+          'Questi accoglienti alloggi sono il rifugio perfetto per staccare dal caos cittadino. '
+          'Immersi nella natura incontaminata, potrai svegliarti col canto degli uccellini, '
           'fare trekking nei boschi circostanti, o semplicemente rilassarti e dedicarti ai tuoi hobby.',
           style: TextStyle(fontSize: 18, height: 1.6, color: Colors.black87),
         ),
@@ -764,13 +765,14 @@ class _HomePageState extends State<HomePage> {
           runSpacing: 20,
           children: [
             _buildAmenity(Icons.wifi, 'Wi-Fi Veloce'),
-            _buildAmenity(Icons.bed_outlined, '6+5 Posti Letto'),
+            _buildAmenity(Icons.bed_outlined, '8 Posti Letto'),
             _buildAmenity(Icons.deck, 'Ampia Terrazza'),
-            _buildAmenity(Icons.kitchen, 'Cucina Attrezzata'),
+            _buildAmenity(Icons.park_rounded, 'Vista panoramica'),
+            _buildAmenity(Icons.soup_kitchen_sharp, 'Cucina Attrezzata'),
             _buildAmenity(Icons.nature_people, 'Percorsi Trekking'),
             _buildAmenity(Icons.local_parking, 'Parcheggio Gratuito'),
             _buildAmenity(Icons.house_rounded, 'Intero Appartamento'),
-            _buildAmenity(Icons.bathroom_outlined, 'Bagno Privato'),
+            _buildAmenity(Icons.bathroom_rounded, 'Bagno Privato'),
             _buildAmenity(Icons.ac_unit, 'Riscaldamento Autonomo'),
           ],
         ),
@@ -1059,12 +1061,12 @@ class _HomePageState extends State<HomePage> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Cosa fare e cosa succede intorno alla baita',
+                      'Cosa fare e cosa succede nei dintorni',
                       style: TextStyle(fontSize: 15, color: Colors.black54),
                     ),
                   ],
                 ),
-                if (_viewModel.isSignedIn)
+                if (_viewModel.isSignedIn && _viewModel.isAdmin)
                   ElevatedButton.icon(
                     onPressed: () => _showAddActivityDialog(context),
                     icon: const Icon(Icons.add),
@@ -1150,7 +1152,8 @@ class _HomePageState extends State<HomePage> {
                                         ],
                                       ),
                                     ),
-                                    if (_viewModel.isSignedIn)
+                                    if (_viewModel.isSignedIn &&
+                                        _viewModel.isAdmin)
                                       IconButton(
                                         icon: const Icon(Icons.delete_outline,
                                             color: Colors.redAccent, size: 20),
@@ -1271,7 +1274,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: icon,
+                  initialValue: icon,
                   decoration: const InputDecoration(labelText: 'Icona'),
                   items: [
                     'hiking',
@@ -1430,10 +1433,14 @@ class _HomePageState extends State<HomePage> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _viewModel.isSignedIn && !review.approved
+                            color: _viewModel.isSignedIn &&
+                                    !review.approved &&
+                                    _viewModel.isAdmin
                                 ? Colors.orange.shade300
                                 : Colors.grey.shade200,
-                            width: _viewModel.isSignedIn && !review.approved
+                            width: _viewModel.isSignedIn &&
+                                    !review.approved &&
+                                    _viewModel.isAdmin
                                 ? 2
                                 : 1,
                           ),
@@ -1478,7 +1485,8 @@ class _HomePageState extends State<HomePage> {
                                                   fontWeight: FontWeight.bold),
                                             ),
                                             if (_viewModel.isSignedIn &&
-                                                !review.approved) ...[
+                                                !review.approved &&
+                                                _viewModel.isAdmin) ...[
                                               const SizedBox(width: 8),
                                               Container(
                                                 padding:
@@ -1534,7 +1542,8 @@ class _HomePageState extends State<HomePage> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (_viewModel.isSignedIn) ...[
+                            if (_viewModel.isSignedIn &&
+                                _viewModel.isAdmin) ...[
                               const Divider(height: 20),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
