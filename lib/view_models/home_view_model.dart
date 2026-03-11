@@ -20,6 +20,11 @@ class HomeViewModel extends ChangeNotifier {
   List<Activity> _activities = [];
   bool _activitiesLoading = false;
 
+  List<SliderImage> _sliderImages = [];
+  bool _sliderLoading = false;
+  String _sliderStatus = 'Inizializzazione...';
+  String _sliderError = '';
+
   int _draftReviewRating = 5;
   int get draftReviewRating => _draftReviewRating;
   void setDraftReviewRating(int rating) {
@@ -38,6 +43,10 @@ class HomeViewModel extends ChangeNotifier {
   bool get galleryLoading => _galleryLoading;
   List<Activity> get activities => List.unmodifiable(_activities);
   bool get activitiesLoading => _activitiesLoading;
+  List<SliderImage> get sliderImages => List.unmodifiable(_sliderImages);
+  bool get sliderLoading => _sliderLoading;
+  String get sliderStatus => _sliderStatus;
+  String get sliderError => _sliderError;
 
   final CalendarService _calendarService = CalendarService();
   final EmailService _emailService = EmailService();
@@ -49,6 +58,7 @@ class HomeViewModel extends ChangeNotifier {
     _loadReviews();
     _loadGallery();
     _loadActivities();
+    _loadSliderImages();
   }
 
   Future<void> _loadBookedDates() async {
@@ -162,6 +172,46 @@ class HomeViewModel extends ChangeNotifier {
       _activitiesLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _loadSliderImages() async {
+    _sliderLoading = true;
+    _sliderError = '';
+    notifyListeners();
+    try {
+      final remoteSlides = await _contentService.fetchSliderImages();
+      if (remoteSlides.isEmpty) {
+        _sliderStatus = 'Firestore (Collezione vuota)';
+        _sliderImages = _contentService.localSliderFallback;
+      } else {
+        _sliderStatus = 'Firestore (${remoteSlides.length} immagini)';
+        _sliderImages = remoteSlides;
+      }
+    } catch (e) {
+      _sliderStatus = 'Errore Firestore';
+      _sliderError = e.toString();
+      _sliderImages = _contentService.localSliderFallback;
+      debugPrint('❌ Errore _loadSliderImages: $e');
+    } finally {
+      _sliderLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> addSliderImage(XFile file) async {
+    final success = await _contentService.addSliderImage(file);
+    if (success) {
+      await _loadSliderImages();
+    }
+    return success;
+  }
+
+  Future<bool> deleteSliderImage(String id) async {
+    final success = await _contentService.deleteSliderImage(id);
+    if (success) {
+      await _loadSliderImages();
+    }
+    return success;
   }
 
   Future<bool> addGalleryImage(XFile file, String category) async {

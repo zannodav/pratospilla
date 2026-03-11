@@ -34,22 +34,41 @@ class CalendarService {
 
   /// Client ID OAuth2 per Web (solo per login admin / scrittura)
   static const String _clientId =
-      '472493029579-8tnuijdh231nrnn03sipq7j3rbfmqg0b.apps.googleusercontent.com';
+      '905404341597-32ffljhv1vph02c8a23qrnghj4h9lqvl.apps.googleusercontent.com';
 
   // ─────────────────────────────────────────────────────────────────────────
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: _clientId,
-    scopes: [
-      gcal.CalendarApi.calendarScope,
-      'email',
-      'profile',
-    ],
-  );
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  bool _initialized = false;
+  final List<String> _scopes = [
+    gcal.CalendarApi.calendarScope,
+    'email',
+    'profile',
+  ];
+
+  Future<void> _ensureInitialized() async {
+    if (!_initialized) {
+      await _googleSignIn.initialize(clientId: _clientId);
+      _initialized = true;
+    }
+  }
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  bool get isSignedIn => _auth.currentUser != null;
+  // ─── 🔑 EMAIL AUTORIZZATE (Proprietari) ───
+  // Aggiungi qui le email che hanno i permessi di aggiungere/cancellare attività e foto
+  static const List<String> _allowedEmails = [
+    'zannodav@gmail.com',
+    'giudidgd@gmail.com',
+    'zannoni.di@gmail.com',
+  ];
+
+  bool get isSignedIn {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) return false;
+    return _allowedEmails.contains(user.email);
+  }
+
   bool get isApiKeyConfigured => true; // Chiave confermata dall'utente
 
   // ──────────────────────────────────────────────────────
@@ -71,13 +90,22 @@ class CalendarService {
           await _auth.signInWithPopup(provider);
       print('✅ Firebase Auth completato per: ${userCredential.user?.email}');
 
+      // Se l'utente non è nella lista dei proprietari autorizzati, neghiamo l'accesso admin
+      if (!isSignedIn) {
+        print(
+            '❌ Accesso negato: ${userCredential.user?.email} non è un amministratore registrato.');
+        await signOut();
+        return false;
+      }
+
       // Tentiamo un login silenzioso per il plugin google_sign_in
       // così da avere l'account disponibile per le chiamate API Calendar.
       try {
-        await _googleSignIn.signInSilently();
+        await _ensureInitialized();
+        await _googleSignIn.attemptLightweightAuthentication();
       } catch (e) {
         print(
-            'Nota: loginGoogleSignIn.signInSilently non riuscito (non critico): $e');
+            'Nota: loginGoogleSignIn.attemptLightweightAuthentication non riuscito (non critico): $e');
       }
 
       return true;
@@ -93,9 +121,18 @@ class CalendarService {
   }
 
   Future<gcal.CalendarApi?> _getOAuthCalendarApi() async {
-    final httpClient = await _googleSignIn.authenticatedClient();
-    if (httpClient == null) return null;
-    return gcal.CalendarApi(httpClient);
+    await _ensureInitialized();
+    try {
+      var authz = await _googleSignIn.authorizationClient
+          .authorizationForScopes(_scopes);
+      authz ??=
+          await _googleSignIn.authorizationClient.authorizeScopes(_scopes);
+      final httpClient = authz.authClient(scopes: _scopes);
+      return gcal.CalendarApi(httpClient);
+    } catch (e) {
+      print('❌ Errore _getOAuthCalendarApi: $e');
+    }
+    return null;
   }
 
   // ──────────────────────────────────────────────────────

@@ -61,6 +61,27 @@ class Activity {
   }
 }
 
+class SliderImage {
+  final String id;
+  final String url;
+  final DateTime date;
+
+  SliderImage({
+    required this.id,
+    required this.url,
+    required this.date,
+  });
+
+  factory SliderImage.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return SliderImage(
+      id: doc.id,
+      url: data['url'] as String? ?? '',
+      date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+}
+
 class ContentService {
   // Accedi alle istanze tramite getter per evitare errori se chiamate troppo presto
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
@@ -110,10 +131,74 @@ class ContentService {
         date: DateTime.now()),
   ];
 
+  final List<SliderImage> localSliderFallback = [
+    SliderImage(id: 's1', url: 'assets/slide1.jpg', date: DateTime.now()),
+    SliderImage(id: 's2', url: 'assets/slide2.jpg', date: DateTime.now()),
+    SliderImage(id: 's3', url: 'assets/slide3.jpg', date: DateTime.now()),
+    SliderImage(id: 's4', url: 'assets/slide4.jpg', date: DateTime.now()),
+    SliderImage(id: 's5', url: 'assets/slide5.jpg', date: DateTime.now()),
+  ];
+
+  /// --- SLIDER ---
+
+  Future<List<SliderImage>> fetchSliderImages() async {
+    debugPrint('🚀 fetchSliderImages: Tentativo recupero da Firestore...');
+    final snapshot = await _firestore
+        .collection('slider')
+        .get();
+    
+    if (snapshot.docs.isEmpty) {
+      debugPrint('ℹ️ Collezione "slider" vuota o inesistente su Firestore.');
+      return [];
+    }
+
+    final slides = snapshot.docs
+        .map((doc) => SliderImage.fromFirestore(doc))
+        .toList();
+    debugPrint('✅ Recuperate ${slides.length} slide da Firestore.');
+    return slides;
+  }
+
+  Future<bool> addSliderImage(XFile file) async {
+    try {
+      String fileName =
+          'slider/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+      Reference ref = _storage.ref().child(fileName);
+
+      UploadTask uploadTask;
+      if (kIsWeb) {
+        uploadTask = ref.putData(await file.readAsBytes());
+      } else {
+        uploadTask = ref.putFile(File(file.path));
+      }
+
+      final snapshot = await uploadTask;
+      final url = await snapshot.ref.getDownloadURL();
+
+      await _firestore.collection('slider').add({
+        'url': url,
+        'date': Timestamp.now(),
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error uploading slider image: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteSliderImage(String id) async {
+    try {
+      await _firestore.collection('slider').doc(id).delete();
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting slider image: $e');
+      return false;
+    }
+  }
+
   /// --- GALLERY ---
 
   Future<List<GalleryImage>> fetchGallery() async {
-    if (!_firestoreAvailable) return _localGallery;
     try {
       final snapshot = await _firestore
           .collection('gallery')
@@ -124,7 +209,7 @@ class ContentService {
           .map((doc) => GalleryImage.fromFirestore(doc))
           .toList();
     } catch (e) {
-      _firestoreAvailable = false;
+      debugPrint('⚠️ Errore recupero gallery: $e');
       return _localGallery;
     }
   }
@@ -227,6 +312,7 @@ class ContentService {
       return false;
     }
   }
+
   Future<bool> deleteActivity(String id) async {
     try {
       await _firestore.collection('activities').doc(id).delete();
@@ -235,5 +321,5 @@ class ContentService {
       debugPrint('Error deleting activity: $e');
       return false;
     }
-  }  
+  }
 }

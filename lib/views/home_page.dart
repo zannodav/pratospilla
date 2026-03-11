@@ -82,7 +82,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(width: 12),
             const Text(
-              'Appennino che Emozione!',
+              '100 laghi',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
@@ -309,33 +309,135 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildPhotoGallery() {
-    return CarouselSlider(
-      options: CarouselOptions(
-        height: 400.0,
-        enlargeCenterPage: true,
-        autoPlay: true,
-        autoPlayInterval: const Duration(seconds: 4),
-        viewportFraction: 0.85,
-      ),
-      items: imgList
-          .map((item) => Container(
-                margin: const EdgeInsets.symmetric(vertical: 20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    )
-                  ],
-                  image: DecorationImage(
-                    image: AssetImage(item),
-                    fit: BoxFit.cover,
+    return ListenableBuilder(
+      listenable: _viewModel,
+      builder: (context, _) {
+        final slides = _viewModel.sliderImages;
+        return Column(
+          children: [
+            if (_viewModel.isSignedIn)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: ElevatedButton.icon(
+                  onPressed: () => _showAddSliderImageDialog(context),
+                  icon: const Icon(Icons.add_photo_alternate),
+                  label: const Text('Carica Nuova Slide'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
                   ),
                 ),
-              ))
-          .toList(),
+              ),
+            CarouselSlider(
+              options: CarouselOptions(
+                height: 400.0,
+                enlargeCenterPage: true,
+                autoPlay: true,
+                autoPlayInterval: const Duration(seconds: 4),
+                viewportFraction: 0.85,
+              ),
+              items: slides.map((item) {
+                return Stack(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.symmetric(vertical: 20),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          )
+                        ],
+                        image: DecorationImage(
+                          image: item.url.startsWith('http')
+                              ? NetworkImage(item.url) as ImageProvider
+                              : AssetImage(item.url),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    if (_viewModel.isSignedIn)
+                      Positioned(
+                        top: 30,
+                        right: 10,
+                        child: CircleAvatar(
+                          backgroundColor: Colors.white,
+                          child: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () =>
+                                _confirmDeleteSliderImage(context, item.id),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAddSliderImageDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Carica Foto Slide'),
+        content: const Text('Seleziona una foto per lo slider principale.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final picker = ImagePicker();
+              final image = await picker.pickImage(source: ImageSource.gallery);
+              if (image != null) {
+                if (mounted) Navigator.pop(context);
+                final success = await _viewModel.addSliderImage(image);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success
+                          ? 'Slide caricata!'
+                          : 'Errore durante il caricamento.'),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Seleziona Foto'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteSliderImage(BuildContext context, String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Elimina Slide'),
+        content: const Text('Vuoi davvero eliminare questa immagine dallo slider?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _viewModel.deleteSliderImage(id);
+            },
+            child: const Text('Elimina', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -360,33 +462,38 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Galleria Fotografica',
-                      style:
-                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Esplora gli spazi della baita e i paesaggi del territorio',
-                      style: TextStyle(fontSize: 15, color: Colors.black54),
-                    ),
-                  ],
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Galleria Fotografica',
+                        style:
+                            TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Esplora gli spazi interni e i paesaggi del territorio',
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
+                    ],
+                  ),
                 ),
                 if (_viewModel.isSignedIn)
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddImageDialog(context),
-                    icon: const Icon(Icons.add_a_photo, size: 20),
-                    label: const Text('Carica'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12.0, right: 8.0),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showAddImageDialog(context),
+                      icon: const Icon(Icons.add_a_photo, size: 20),
+                      label: const Text('Carica'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
                     ),
                   ),
               ],
@@ -600,7 +707,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: category,
+                initialValue: category,
                 decoration: const InputDecoration(labelText: 'Categoria'),
                 items: ['Interni', 'Territorio']
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -733,7 +840,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
-                'Baita Esclusiva',
+                'Alloggi Esclusivi',
                 style:
                     TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
               ),
@@ -743,7 +850,7 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 16),
         const Text(
           'Vivi un\'esperienza indimenticabile al confine tra Emilia-Romagna e Toscana. '
-          'Questa accogliente baita è il rifugio perfetto per staccare dal caos cittadino. '
+          'Questi accoglienti alloggi sono il rifugio perfetto per staccare dal caos cittadino. '
           'Immersa nella natura incontaminata, potrai svegliarti col canto degli uccellini, '
           'fare trekking nei boschi circostanti, o semplicemente rilassarti e dedicarti ai tuoi hobby.',
           style: TextStyle(fontSize: 18, height: 1.6, color: Colors.black87),
@@ -764,8 +871,9 @@ class _HomePageState extends State<HomePage> {
           runSpacing: 20,
           children: [
             _buildAmenity(Icons.wifi, 'Wi-Fi Veloce'),
-            _buildAmenity(Icons.bed_outlined, '6+5 Posti Letto'),
+            _buildAmenity(Icons.bed_outlined, '8 Posti Letto'),
             _buildAmenity(Icons.deck, 'Ampia Terrazza'),
+            _buildAmenity(Icons.landscape, 'Vista Panoramica'),
             _buildAmenity(Icons.kitchen, 'Cucina Attrezzata'),
             _buildAmenity(Icons.nature_people, 'Percorsi Trekking'),
             _buildAmenity(Icons.local_parking, 'Parcheggio Gratuito'),
@@ -811,14 +919,13 @@ class _HomePageState extends State<HomePage> {
                 rangeStartDay: _viewModel.checkInDate,
                 rangeEndDay: _viewModel.checkOutDate,
                 onDaySelected: (selectedDay, focusedDay) {
+                  final now = DateTime.now();
+                  final today = DateTime(now.year, now.month, now.day);
+
                   // Previene selezione giorni passati
-                  if (selectedDay.isBefore(
-                      DateTime.now().subtract(const Duration(days: 1)))) {
+                  if (selectedDay.isBefore(today)) {
                     return;
                   }
-
-                  // Se premi un giorno disattivato, non succede niente
-                  if (_viewModel.isDateBooked(selectedDay)) return;
 
                   setState(() {
                     _focusedDay = focusedDay;
@@ -828,32 +935,17 @@ class _HomePageState extends State<HomePage> {
                             _viewModel.checkOutDate != null)) {
                       _viewModel.selectDates(selectedDay, null);
                     } else if (selectedDay.isAfter(_viewModel.checkInDate!)) {
-                      // Verifica se ci sono giorni prenotati nel mezzo
-                      bool hasBookedDaysInBetween = false;
-                      for (DateTime d = _viewModel.checkInDate!;
-                          d.isBefore(selectedDay);
-                          d = d.add(const Duration(days: 1))) {
-                        if (_viewModel.isDateBooked(d)) {
-                          hasBookedDaysInBetween = true;
-                          break;
-                        }
-                      }
-
-                      if (!hasBookedDaysInBetween) {
-                        _viewModel.selectDates(
-                            _viewModel.checkInDate!, selectedDay);
-                      } else {
-                        // Se c'è un giorno occupato, resetta start al giorno cliccato
-                        _viewModel.selectDates(selectedDay, null);
-                      }
+                      _viewModel.selectDates(
+                          _viewModel.checkInDate!, selectedDay);
                     } else {
                       _viewModel.selectDates(selectedDay, null);
                     }
                   });
                 },
                 enabledDayPredicate: (day) {
-                  // Disabilita date prenotate nel calendario così non si possono cliccare
-                  return true; //!_viewModel.isDateBooked(day);
+                  final now = DateTime.now();
+                  final today = DateTime(now.year, now.month, now.day);
+                  return !day.isBefore(today);
                 },
                 calendarStyle: CalendarStyle(
                   disabledTextStyle: const TextStyle(
@@ -1000,7 +1092,7 @@ class _HomePageState extends State<HomePage> {
                             messenger.showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                    'Richiesta inviata con successo! Un\'email è stata mandata a [Tua Email].'),
+                                    'Richiesta inviata con successo! Un\'email è stata mandata al gestore.'),
                                 backgroundColor: Colors.green,
                               ),
                             );
@@ -1047,33 +1139,38 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Attività & Eventi',
-                      style:
-                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Cosa fare e cosa succede intorno alla baita',
-                      style: TextStyle(fontSize: 15, color: Colors.black54),
-                    ),
-                  ],
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Attività & Eventi',
+                        style:
+                            TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Cosa fare e cosa succede nei dintorni',
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
+                    ],
+                  ),
                 ),
                 if (_viewModel.isSignedIn)
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddActivityDialog(context),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Aggiungi'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12.0, right: 8.0),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showAddActivityDialog(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Aggiungi'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
                     ),
                   ),
               ],
@@ -1271,7 +1368,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: icon,
+                  initialValue: icon,
                   decoration: const InputDecoration(labelText: 'Icona'),
                   items: [
                     'hiking',
