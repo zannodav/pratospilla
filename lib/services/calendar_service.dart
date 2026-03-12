@@ -307,7 +307,7 @@ class CalendarService {
   // ──────────────────────────────────────────────────────
 
   List<DateTime> getDummyBookedDates() {
-    final now = DateTime.now();
+    //final now = DateTime.now();
     return [
       //DateTime(now.year, now.month, now.day + 2),
       //DateTime(now.year, now.month, now.day + 3),
