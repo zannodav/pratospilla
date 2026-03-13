@@ -192,7 +192,7 @@ class _HomePageState extends State<HomePage> {
                         label: const Text('Accedi',
                             style: TextStyle(color: Colors.white)),
                         style: TextButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.15),
+                          backgroundColor: Colors.white.withValues(alpha: 0.15),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8)),
                         ),
@@ -346,7 +346,7 @@ class _HomePageState extends State<HomePage> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 10,
                             offset: const Offset(0, 5),
                           )
@@ -423,7 +423,8 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Elimina Slide'),
-        content: const Text('Vuoi davvero eliminare questa immagine dallo slider?'),
+        content:
+            const Text('Vuoi davvero eliminare questa immagine dallo slider?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -470,8 +471,8 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       Text(
                         'Galleria Fotografica',
-                        style:
-                            TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold),
                       ),
                       SizedBox(height: 8),
                       Text(
@@ -581,7 +582,7 @@ class _HomePageState extends State<HomePage> {
                                         begin: Alignment.bottomCenter,
                                         end: Alignment.topCenter,
                                         colors: [
-                                          Colors.black.withOpacity(0.6),
+                                          Colors.black.withValues(alpha: 0.6),
                                           Colors.transparent
                                         ],
                                       ),
@@ -605,7 +606,8 @@ class _HomePageState extends State<HomePage> {
                                       child: Container(
                                         padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
-                                          color: Colors.black.withOpacity(0.5),
+                                          color: Colors.black
+                                              .withValues(alpha: 0.5),
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(Icons.delete,
@@ -629,7 +631,12 @@ class _HomePageState extends State<HomePage> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) =>
-                                    GalleryPage(images: filtered),
+                                    GalleryPage(
+                                      images: filtered,
+                                      isAdmin: _viewModel.isSignedIn,
+                                      onDelete: (id) =>
+                                          _viewModel.deleteGalleryImage(id),
+                                    ),
                               ),
                             );
                           },
@@ -1147,8 +1154,8 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       Text(
                         'Attività & Eventi',
-                        style:
-                            TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold),
                       ),
                       SizedBox(height: 8),
                       Text(
@@ -1276,7 +1283,12 @@ class _HomePageState extends State<HomePage> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      AllActivitiesPage(activities: activities),
+                                      AllActivitiesPage(
+                                        activities: activities,
+                                        isAdmin: _viewModel.isSignedIn,
+                                        onDelete: (id) =>
+                                            _viewModel.deleteActivity(id),
+                                      ),
                                 ),
                               );
                               // We could navigate to an AllActivities page here, but for now just showing button
@@ -1536,7 +1548,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -1690,7 +1702,12 @@ class _HomePageState extends State<HomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ReviewsPage(reviews: reviews),
+                          builder: (context) => ReviewsPage(
+                            reviews: reviews,
+                            isAdmin: _viewModel.isSignedIn,
+                            onApprove: (id) => _viewModel.approveReview(id),
+                            onDelete: (id) => _viewModel.deleteReview(id),
+                          ),
                         ),
                       );
                     },
@@ -1863,9 +1880,10 @@ Widget _buildAirbnbCard(Map<String, String> listing, Color airbnbColor) {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: airbnbColor.withOpacity(0.1),
+                    color: airbnbColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: airbnbColor.withOpacity(0.35)),
+                    border:
+                        Border.all(color: airbnbColor.withValues(alpha: 0.35)),
                   ),
                   child: Text(
                     listing['type']!,

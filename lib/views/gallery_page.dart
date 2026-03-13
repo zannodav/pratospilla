@@ -3,8 +3,15 @@ import '../services/content_service.dart';
 
 class GalleryPage extends StatefulWidget {
   final List<GalleryImage> images;
+  final bool isAdmin;
+  final Function(String)? onDelete;
 
-  const GalleryPage({super.key, required this.images});
+  const GalleryPage({
+    super.key,
+    required this.images,
+    this.isAdmin = false,
+    this.onDelete,
+  });
 
   @override
   State<GalleryPage> createState() => _GalleryPageState();
@@ -12,6 +19,40 @@ class GalleryPage extends StatefulWidget {
 
 class _GalleryPageState extends State<GalleryPage> {
   String _selectedGalleryCategory = 'tutti';
+  late List<GalleryImage> _currentImages;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentImages = List.from(widget.images);
+  }
+
+  void _handleDelete(String id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Conferma eliminazione'),
+        content: const Text('Sei sicuro di voler eliminare questa foto?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annulla'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Elimina', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && widget.onDelete != null) {
+      widget.onDelete!(id);
+      setState(() {
+        _currentImages.removeWhere((img) => img.id == id);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,8 +63,8 @@ class _GalleryPageState extends State<GalleryPage> {
     ];
 
     final filtered = _selectedGalleryCategory == 'tutti'
-        ? widget.images
-        : widget.images
+        ? _currentImages
+        : _currentImages
             .where((img) => img.category == _selectedGalleryCategory)
             .toList();
 
@@ -114,7 +155,7 @@ class _GalleryPageState extends State<GalleryPage> {
                                   begin: Alignment.bottomCenter,
                                   end: Alignment.topCenter,
                                   colors: [
-                                    Colors.black.withOpacity(0.6),
+                                    Colors.black.withValues(alpha: 0.6),
                                     Colors.transparent
                                   ],
                                 ),
@@ -128,6 +169,23 @@ class _GalleryPageState extends State<GalleryPage> {
                               ),
                             ),
                           ),
+                          if (widget.isAdmin)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: GestureDetector(
+                                onTap: () => _handleDelete(img.id),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.delete,
+                                      color: Colors.white, size: 18),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
