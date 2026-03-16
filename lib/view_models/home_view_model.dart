@@ -25,6 +25,13 @@ class HomeViewModel extends ChangeNotifier {
   String _sliderStatus = 'Inizializzazione...';
   String _sliderError = '';
 
+  String _heroTitle = 'Fuga Romantica tra i Monti di Prato Spilla';
+  String _heroDescription =
+      "Vivi un'esperienza indimenticabile al confine tra Emilia-Romagna e Toscana. "
+      "Questi accoglienti alloggi sono il rifugio perfetto per staccare dal caos cittadino. "
+      "Immersa nella natura incontaminata, potrai svegliarti col canto degli uccellini, "
+      "fare trekking nei boschi circostanti, o semplicemente rilassarti e dedicarti ai tuoi hobby.";
+
   int _draftReviewRating = 5;
   int get draftReviewRating => _draftReviewRating;
   void setDraftReviewRating(int rating) {
@@ -47,6 +54,8 @@ class HomeViewModel extends ChangeNotifier {
   bool get sliderLoading => _sliderLoading;
   String get sliderStatus => _sliderStatus;
   String get sliderError => _sliderError;
+  String get heroTitle => _heroTitle;
+  String get heroDescription => _heroDescription;
 
   final CalendarService _calendarService = CalendarService();
   final EmailService _emailService = EmailService();
@@ -59,6 +68,7 @@ class HomeViewModel extends ChangeNotifier {
     _loadGallery();
     _loadActivities();
     _loadSliderImages();
+    _loadHeroText();
   }
 
   Future<void> _loadBookedDates() async {
@@ -244,6 +254,23 @@ class HomeViewModel extends ChangeNotifier {
     final success = await _contentService.deleteActivity(id);
     if (success) {
       await _loadActivities();
+    }
+    return success;
+  }
+
+  Future<void> _loadHeroText() async {
+    final data = await _contentService.fetchHeroText();
+    _heroTitle = data['title']!;
+    _heroDescription = data['description']!;
+    notifyListeners();
+  }
+
+  Future<bool> saveHeroText(String title, String description) async {
+    final success = await _contentService.saveHeroText(title, description);
+    if (success) {
+      _heroTitle = title;
+      _heroDescription = description;
+      notifyListeners();
     }
     return success;
   }

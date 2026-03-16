@@ -322,4 +322,48 @@ class ContentService {
       return false;
     }
   }
+
+  /// --- HERO TEXT ---
+
+  static const String _heroDefaultTitle =
+      'Fuga Romantica tra i Monti di Prato Spilla';
+  static const String _heroDefaultDescription =
+      "Vivi un'esperienza indimenticabile al confine tra Emilia-Romagna e Toscana. "
+      "Questi accoglienti alloggi sono il rifugio perfetto per staccare dal caos cittadino. "
+      "Immersa nella natura incontaminata, potrai svegliarti col canto degli uccellini, "
+      "fare trekking nei boschi circostanti, o semplicemente rilassarti e dedicarti ai tuoi hobby.";
+
+  Future<Map<String, String>> fetchHeroText() async {
+    try {
+      final doc =
+          await _firestore.collection('settings').doc('hero').get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        return {
+          'title': data['title'] as String? ?? _heroDefaultTitle,
+          'description':
+              data['description'] as String? ?? _heroDefaultDescription,
+        };
+      }
+    } catch (e) {
+      debugPrint('Error fetching hero text: $e');
+    }
+    return {
+      'title': _heroDefaultTitle,
+      'description': _heroDefaultDescription,
+    };
+  }
+
+  Future<bool> saveHeroText(String title, String description) async {
+    try {
+      await _firestore.collection('settings').doc('hero').set({
+        'title': title,
+        'description': description,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error saving hero text: $e');
+      return false;
+    }
+  }
 }

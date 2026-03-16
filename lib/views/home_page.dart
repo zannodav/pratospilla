@@ -75,15 +75,19 @@ class _HomePageState extends State<HomePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              'assets/logo.jpg',
+              'assets/logo2.png',
               height: 40,
               errorBuilder: (context, error, stackTrace) =>
                   const Icon(Icons.broken_image, color: Colors.white),
             ),
             const SizedBox(width: 12),
             const Text(
-              '100 laghi',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              'i 100 Laghi',
+              style: TextStyle(
+                  fontFamily: 'Arial',
+                  fontSize: 16,
+                  fontWeight: FontWeight.normal,
+                  fontStyle: FontStyle.italic),
             ),
           ],
         ),
@@ -106,7 +110,7 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 child: Image.asset(
                   'assets/logo_visitmonchio.png',
-                  height: 36,
+                  height: 50,
                   errorBuilder: (context, error, stackTrace) =>
                       const Icon(Icons.broken_image, color: Colors.white),
                 ),
@@ -189,7 +193,7 @@ class _HomePageState extends State<HomePage> {
                       )
                     : TextButton.icon(
                         icon: const Icon(Icons.login, color: Colors.white),
-                        label: const Text('Accedi',
+                        label: const Text('Admin',
                             style: TextStyle(color: Colors.white)),
                         style: TextButton.styleFrom(
                           backgroundColor: Colors.white.withValues(alpha: 0.15),
@@ -630,13 +634,12 @@ class _HomePageState extends State<HomePage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    GalleryPage(
-                                      images: filtered,
-                                      isAdmin: _viewModel.isSignedIn,
-                                      onDelete: (id) =>
-                                          _viewModel.deleteGalleryImage(id),
-                                    ),
+                                builder: (context) => GalleryPage(
+                                  images: filtered,
+                                  isAdmin: _viewModel.isSignedIn,
+                                  onDelete: (id) =>
+                                      _viewModel.deleteGalleryImage(id),
+                                ),
                               ),
                             );
                           },
@@ -826,43 +829,124 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildDescriptionSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return ListenableBuilder(
+      listenable: _viewModel,
+      builder: (context, _) {
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Flexible(
-              child: Text(
-                'Fuga Romantica tra i Monti di Prato Spilla',
-                style: TextStyle(
-                    fontSize: 32, fontWeight: FontWeight.bold, height: 1.2),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Flexible(
+                  child: Text(
+                    _viewModel.heroTitle,
+                    style: const TextStyle(
+                        fontSize: 32, fontWeight: FontWeight.bold, height: 1.2),
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Alloggi Esclusivi',
+                        style: TextStyle(
+                            color: Colors.teal, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (_viewModel.isSignedIn) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.teal),
+                        tooltip: 'Modifica testo',
+                        onPressed: () =>
+                            _showEditDescriptionDialog(context),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.teal.shade50,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                'Alloggi Esclusivi',
-                style:
-                    TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
-              ),
-            )
+            const SizedBox(height: 16),
+            Text(
+              _viewModel.heroDescription,
+              style: const TextStyle(
+                  fontSize: 18, height: 1.6, color: Colors.black87),
+            ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showEditDescriptionDialog(BuildContext context) {
+    final titleCtrl =
+        TextEditingController(text: _viewModel.heroTitle);
+    final descCtrl =
+        TextEditingController(text: _viewModel.heroDescription);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Modifica Testo Principale'),
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Titolo',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Descrizione',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 6,
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        const Text(
-          'Vivi un\'esperienza indimenticabile al confine tra Emilia-Romagna e Toscana. '
-          'Questi accoglienti alloggi sono il rifugio perfetto per staccare dal caos cittadino. '
-          'Immersa nella natura incontaminata, potrai svegliarti col canto degli uccellini, '
-          'fare trekking nei boschi circostanti, o semplicemente rilassarti e dedicarti ai tuoi hobby.',
-          style: TextStyle(fontSize: 18, height: 1.6, color: Colors.black87),
-        ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              final ok = await _viewModel.saveHeroText(
+                  titleCtrl.text.trim(), descCtrl.text.trim());
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(ok ? 'Testo salvato!' : 'Errore nel salvataggio'),
+                  backgroundColor: ok ? Colors.green : Colors.red,
+                ));
+              }
+            },
+            child: const Text('Salva'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1282,13 +1366,12 @@ class _HomePageState extends State<HomePage> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      AllActivitiesPage(
-                                        activities: activities,
-                                        isAdmin: _viewModel.isSignedIn,
-                                        onDelete: (id) =>
-                                            _viewModel.deleteActivity(id),
-                                      ),
+                                  builder: (context) => AllActivitiesPage(
+                                    activities: activities,
+                                    isAdmin: _viewModel.isSignedIn,
+                                    onDelete: (id) =>
+                                        _viewModel.deleteActivity(id),
+                                  ),
                                 ),
                               );
                               // We could navigate to an AllActivities page here, but for now just showing button
