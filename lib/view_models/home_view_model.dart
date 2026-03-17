@@ -240,6 +240,16 @@ class HomeViewModel extends ChangeNotifier {
     return success;
   }
 
+  Future<bool> updateGalleryImageDescription(
+      String id, String description) async {
+    final success =
+        await _contentService.updateGalleryImageDescription(id, description);
+    if (success) {
+      await _loadGallery();
+    }
+    return success;
+  }
+
   Future<bool> addActivity(String title, String description, String icon,
       {XFile? mediaFile}) async {
     final success = await _contentService.addActivity(title, description, icon,

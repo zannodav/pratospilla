@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/content_service.dart';
+import '../widgets/pdf_viewer.dart';
 
 class ActivityDetailsPage extends StatelessWidget {
   final Activity activity;
@@ -91,38 +92,7 @@ class ActivityDetailsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   if (activity.mediaType == 'pdf')
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.shade200),
-                      ),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            const Icon(Icons.picture_as_pdf,
-                                size: 48, color: Colors.red),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () async {
-                                final url = Uri.parse(activity.mediaUrl!);
-                                if (await canLaunchUrl(url)) {
-                                  await launchUrl(url,
-                                      mode: LaunchMode.externalApplication);
-                                }
-                              },
-                              icon: const Icon(Icons.open_in_new),
-                              label: const Text('Apri PDF / Scarica Locandina'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
+                    _buildPdfSection(context, activity.mediaUrl!)
                   else
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -152,6 +122,44 @@ class ActivityDetailsPage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPdfSection(BuildContext context, String url) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Inline PDF preview (web only via iframe)
+        if (isPdfViewerSupported) ...[
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.red.shade200),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            clipBehavior: Clip.hardEdge,
+            child: buildPdfViewer(url, height: 700),
+          ),
+          const SizedBox(height: 12),
+        ],
+        // Download / open button (always shown)
+        OutlinedButton.icon(
+          onPressed: () async {
+            final uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
+          icon: const Icon(Icons.open_in_new, color: Colors.red),
+          label: const Text(
+            'Apri PDF in nuova scheda',
+            style: TextStyle(color: Colors.red),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Colors.red),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+          ),
+        ),
+      ],
     );
   }
 }

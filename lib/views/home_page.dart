@@ -586,17 +586,35 @@ class _HomePageState extends State<HomePage> {
                                         begin: Alignment.bottomCenter,
                                         end: Alignment.topCenter,
                                         colors: [
-                                          Colors.black.withValues(alpha: 0.6),
+                                          Colors.black.withValues(alpha: 0.65),
                                           Colors.transparent
                                         ],
                                       ),
                                     ),
-                                    child: Text(
-                                      img.category,
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (img.description != null &&
+                                            img.description!.isNotEmpty)
+                                          Text(
+                                            img.description!,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                height: 1.3),
+                                          ),
+                                        Text(
+                                          img.category,
+                                          style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -639,6 +657,9 @@ class _HomePageState extends State<HomePage> {
                                   isAdmin: _viewModel.isSignedIn,
                                   onDelete: (id) =>
                                       _viewModel.deleteGalleryImage(id),
+                                  onUpdateDescription: (id, desc) =>
+                                      _viewModel.updateGalleryImageDescription(
+                                          id, desc),
                                 ),
                               ),
                             );
@@ -754,13 +775,61 @@ class _HomePageState extends State<HomePage> {
 
   void _showImageLightbox(
       BuildContext context, List<GalleryImage> images, int initialIndex) {
+    final mutableImages = List<GalleryImage>.from(images);
     int currentIndex = initialIndex;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
-          final img = images[currentIndex];
+          final img = mutableImages[currentIndex];
+          final hasDescription =
+              img.description != null && img.description!.isNotEmpty;
+
+          Future<void> handleEditDescription() async {
+            final controller =
+                TextEditingController(text: img.description ?? '');
+            final saved = await showDialog<String>(
+              context: ctx,
+              builder: (dctx) => AlertDialog(
+                title: const Text('Modifica descrizione'),
+                content: TextField(
+                  controller: controller,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: 'Aggiungi una descrizione alla foto…',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dctx, null),
+                    child: const Text('Annulla'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(dctx, controller.text),
+                    child: const Text('Salva'),
+                  ),
+                ],
+              ),
+            );
+            if (saved == null) return;
+            final success =
+                await _viewModel.updateGalleryImageDescription(img.id, saved);
+            if (success) {
+              final updated = GalleryImage(
+                id: img.id,
+                url: img.url,
+                category: img.category,
+                date: img.date,
+                description:
+                    saved.trim().isEmpty ? null : saved.trim(),
+              );
+              mutableImages[currentIndex] = updated;
+              setDialogState(() {});
+            }
+          }
+
           return Dialog(
             backgroundColor: Colors.transparent,
             insetPadding: const EdgeInsets.all(16),
@@ -774,20 +843,67 @@ class _HomePageState extends State<HomePage> {
                       ? Image.network(img.url, fit: BoxFit.contain)
                       : Image.asset(img.url, fit: BoxFit.contain),
                 ),
-                // Label in basso
+                // Label + descrizione in basso
                 Positioned(
                   bottom: 12,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${img.category}  •  ${currentIndex + 1}/${images.length}',
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                    ),
+                  left: 16,
+                  right: 16,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasDescription)
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            img.description!,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                height: 1.4),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${img.category}  •  ${currentIndex + 1}/${mutableImages.length}',
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 13),
+                            ),
+                          ),
+                          if (_viewModel.isSignedIn) ...[
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: handleEditDescription,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.teal.withValues(alpha: 0.85),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.edit,
+                                    color: Colors.white, size: 18),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
                   ),
                 ),
                 // Freccia sinistra
@@ -801,7 +917,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 // Freccia destra
-                if (currentIndex < images.length - 1)
+                if (currentIndex < mutableImages.length - 1)
                   Positioned(
                     right: 0,
                     child: IconButton(

@@ -9,12 +9,14 @@ class GalleryImage {
   final String url;
   final String category;
   final DateTime date;
+  final String? description;
 
   GalleryImage({
     required this.id,
     required this.url,
     required this.category,
     required this.date,
+    this.description,
   });
 
   factory GalleryImage.fromFirestore(DocumentSnapshot doc) {
@@ -24,6 +26,7 @@ class GalleryImage {
       url: data['url'] as String? ?? '',
       category: data['category'] as String? ?? 'Interni',
       date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      description: data['description'] as String?,
     );
   }
 }
@@ -248,6 +251,19 @@ class ContentService {
       return true;
     } catch (e) {
       debugPrint('Error deleting gallery image: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateGalleryImageDescription(
+      String id, String description) async {
+    try {
+      await _firestore.collection('gallery').doc(id).update({
+        'description': description.trim().isEmpty ? null : description.trim(),
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error updating gallery image description: $e');
       return false;
     }
   }
