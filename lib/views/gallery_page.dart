@@ -5,6 +5,8 @@ class GalleryPage extends StatefulWidget {
   final List<GalleryImage> images;
   final bool isAdmin;
   final Function(String)? onDelete;
+  final Function(GalleryImage)? onToggleVisibility;
+  final Function(GalleryImage, int)? onToggleOrder;
   final Future<bool> Function(String id, String description)?
       onUpdateDescription;
 
@@ -13,6 +15,8 @@ class GalleryPage extends StatefulWidget {
     required this.images,
     this.isAdmin = false,
     this.onDelete,
+    this.onToggleVisibility,
+    this.onToggleOrder,
     this.onUpdateDescription,
   });
 
@@ -115,6 +119,7 @@ class _GalleryPageState extends State<GalleryPage> {
           category: img.category,
           date: img.date,
           description: saved.trim().isEmpty ? null : saved.trim(),
+          isVisible: img.isVisible,
         );
         setState(() {
           _currentImages[globalIdx] = updated;
@@ -215,6 +220,10 @@ class _GalleryPageState extends State<GalleryPage> {
                                         const Icon(Icons.image_not_supported),
                                   ),
                                 ),
+                          if (!img.isVisible)
+                            Container(
+                              color: Colors.white.withValues(alpha: 0.4),
+                            ),
                           // Bottom gradient with category (and description if present)
                           Positioned(
                             bottom: 0,
@@ -260,7 +269,64 @@ class _GalleryPageState extends State<GalleryPage> {
                             ),
                           ),
                           // Admin delete button
-                          if (widget.isAdmin)
+                          if (widget.isAdmin) ...[
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: GestureDetector(
+                                onTap: () {
+                                  if (widget.onToggleVisibility != null) {
+                                    widget.onToggleVisibility!(img);
+                                    setState(() {
+                                      final idx = _currentImages
+                                          .indexWhere((i) => i.id == img.id);
+                                      if (idx != -1) {
+                                        _currentImages[idx] = GalleryImage(
+                                          id: img.id,
+                                          url: img.url,
+                                          category: img.category,
+                                          date: img.date,
+                                          description: img.description,
+                                          isVisible: !img.isVisible,
+                                        );
+                                      }
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    img.isVisible
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: img.isVisible
+                                        ? Colors.white
+                                        : Colors.grey.shade400,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              left: 40,
+                              child: GestureDetector(
+                                onTap: () => _showOrderDialog(context, img),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.low_priority,
+                                      color: Colors.white, size: 18),
+                                ),
+                              ),
+                            ),
                             Positioned(
                               top: 8,
                               right: 8,
@@ -277,6 +343,7 @@ class _GalleryPageState extends State<GalleryPage> {
                                 ),
                               ),
                             ),
+                          ],
                         ],
                       ),
                     ),
@@ -425,6 +492,70 @@ class _GalleryPageState extends State<GalleryPage> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showOrderDialog(BuildContext context, GalleryImage item) {
+    final controller =
+        TextEditingController(text: item.orderIndex.toString());
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Imposta Ordine Galleria'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+                'Inserisci un numero per ordinare l\'immagine (numeri più bassi appaiono per primi).'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Indice Ordine',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final newOrder = int.tryParse(controller.text) ?? item.orderIndex;
+              if (widget.onToggleOrder != null) {
+                widget.onToggleOrder!(item, newOrder);
+                setState(() {
+                  final idx =
+                      _currentImages.indexWhere((i) => i.id == item.id);
+                  if (idx != -1) {
+                    final img = _currentImages[idx];
+                    _currentImages[idx] = GalleryImage(
+                      id: img.id,
+                      url: img.url,
+                      category: img.category,
+                      date: img.date,
+                      description: img.description,
+                      isVisible: img.isVisible,
+                      orderIndex: newOrder,
+                    );
+                    _currentImages.sort((a, b) {
+                      int cmp = a.orderIndex.compareTo(b.orderIndex);
+                      if (cmp == 0) return b.date.compareTo(a.date);
+                      return cmp;
+                    });
+                  }
+                });
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Salva'),
+          ),
+        ],
       ),
     );
   }

@@ -6,12 +6,16 @@ class AllActivitiesPage extends StatefulWidget {
   final List<Activity> activities;
   final bool isAdmin;
   final Function(String)? onDelete;
+  final Function(Activity)? onToggleVisibility;
+  final Function(Activity, int)? onToggleOrder;
 
   const AllActivitiesPage({
     super.key,
     required this.activities,
     this.isAdmin = false,
     this.onDelete,
+    this.onToggleVisibility,
+    this.onToggleOrder,
   });
 
   @override
@@ -85,52 +89,66 @@ class _AllActivitiesPageState extends State<AllActivitiesPage> {
                             ),
                           );
                         },
-                        child: IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // Left side: Media preview (or icon if no media)
-                              ClipRRect(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(12),
-                                  bottomLeft: Radius.circular(12),
+                        child: Opacity(
+                          opacity: activity.isVisible ? 1.0 : 0.5,
+                          child: IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Left side: Media preview (or icon if no media)
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(12),
+                                    bottomLeft: Radius.circular(12),
+                                  ),
+                                  child: _buildMediaPreview(activity),
                                 ),
-                                child: _buildMediaPreview(activity),
-                              ),
-                              // Right side: Text description
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        activity.title.isNotEmpty
-                                            ? activity.title
-                                            : 'Attività',
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
+                                // Right side: Text description
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          activity.title.isNotEmpty
+                                              ? activity.title
+                                              : 'Attività',
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        activity.description,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black87,
-                                          height: 1.4,
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          activity.description,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.black87,
+                                            height: 1.4,
+                                          ),
+                                          maxLines: 4,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        maxLines: 4,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                                        if (widget.isAdmin && !activity.isVisible)
+                                          const Padding(
+                                            padding: EdgeInsets.only(top: 8),
+                                            child: Text(
+                                              'NASCOSTO',
+                                              style: TextStyle(
+                                                  color: Colors.red,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -138,21 +156,143 @@ class _AllActivitiesPageState extends State<AllActivitiesPage> {
                     if (widget.isAdmin)
                       Positioned(
                         top: 12,
-                        right: 4,
-                        child: CircleAvatar(
-                          backgroundColor: Colors.white,
-                          radius: 18,
-                          child: IconButton(
-                            icon: const Icon(Icons.delete,
-                                color: Colors.red, size: 20),
-                            onPressed: () => _handleDelete(activity.id),
-                          ),
+                        right: 12,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Colors.white,
+                              radius: 18,
+                              child: IconButton(
+                                icon: Icon(
+                                  activity.isVisible
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: activity.isVisible
+                                      ? Colors.teal
+                                      : Colors.grey,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  if (widget.onToggleVisibility != null) {
+                                    widget.onToggleVisibility!(activity);
+                                    setState(() {
+                                      final idx = _currentActivities.indexWhere(
+                                          (a) => a.id == activity.id);
+                                      if (idx != -1) {
+                                        final a = _currentActivities[idx];
+                                        _currentActivities[idx] = Activity(
+                                          id: a.id,
+                                          title: a.title,
+                                          description: a.description,
+                                          icon: a.icon,
+                                          date: a.date,
+                                          mediaUrl: a.mediaUrl,
+                                          mediaType: a.mediaType,
+                                          isVisible: !a.isVisible,
+                                        );
+                                      }
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (widget.onToggleOrder != null) ...[
+                              CircleAvatar(
+                                backgroundColor: Colors.white,
+                                radius: 18,
+                                child: IconButton(
+                                  icon: const Icon(Icons.low_priority,
+                                      color: Colors.teal, size: 20),
+                                  onPressed: () => _showOrderDialog(context, activity),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            CircleAvatar(
+                              backgroundColor: Colors.white,
+                              radius: 18,
+                              child: IconButton(
+                                icon: const Icon(Icons.delete,
+                                    color: Colors.red, size: 20),
+                                onPressed: () => _handleDelete(activity.id),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                   ],
                 );
               },
             ),
+    );
+  }
+
+  void _showOrderDialog(BuildContext context, Activity item) {
+    final controller =
+        TextEditingController(text: item.orderIndex.toString());
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Imposta Ordine'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+                'Inserisci un numero per ordinare l\'attività (numeri più bassi appaiono per primi).'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Indice Ordine',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final newOrder = int.tryParse(controller.text) ?? item.orderIndex;
+              if (widget.onToggleOrder != null) {
+                widget.onToggleOrder!(item, newOrder);
+                setState(() {
+                  final idx = _currentActivities
+                      .indexWhere((a) => a.id == item.id);
+                  if (idx != -1) {
+                    final a = _currentActivities[idx];
+                    _currentActivities[idx] = Activity(
+                      id: a.id,
+                      title: a.title,
+                      description: a.description,
+                      icon: a.icon,
+                      date: a.date,
+                      mediaUrl: a.mediaUrl,
+                      mediaType: a.mediaType,
+                      isVisible: a.isVisible,
+                      orderIndex: newOrder,
+                    );
+                    // Optionally re-sort the local list
+                    _currentActivities.sort((a, b) {
+                      int cmp = a.orderIndex.compareTo(b.orderIndex);
+                      if (cmp == 0) return b.date.compareTo(a.date);
+                      return cmp;
+                    });
+                  }
+                });
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Salva'),
+          ),
+        ],
+      ),
     );
   }
 

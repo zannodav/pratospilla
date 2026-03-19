@@ -162,7 +162,7 @@ class HomeViewModel extends ChangeNotifier {
     _galleryLoading = true;
     notifyListeners();
     try {
-      _gallery = await _contentService.fetchGallery();
+      _gallery = await _contentService.fetchGallery(isAdmin: isSignedIn);
     } catch (e) {
       debugPrint('Error loading gallery: $e');
     } finally {
@@ -175,7 +175,7 @@ class HomeViewModel extends ChangeNotifier {
     _activitiesLoading = true;
     notifyListeners();
     try {
-      _activities = await _contentService.fetchActivities();
+      _activities = await _contentService.fetchActivities(isAdmin: isSignedIn);
     } catch (e) {
       debugPrint('Error loading activities: $e');
     } finally {
@@ -189,7 +189,7 @@ class HomeViewModel extends ChangeNotifier {
     _sliderError = '';
     notifyListeners();
     try {
-      final remoteSlides = await _contentService.fetchSliderImages();
+      final remoteSlides = await _contentService.fetchSliderImages(isAdmin: isSignedIn);
       if (remoteSlides.isEmpty) {
         _sliderStatus = 'Firestore (Collezione vuota)';
         _sliderImages = _contentService.localSliderFallback;
@@ -224,6 +224,15 @@ class HomeViewModel extends ChangeNotifier {
     return success;
   }
 
+  Future<bool> toggleSliderImageVisibility(SliderImage item) async {
+    final success = await _contentService.updateSliderImageVisibility(
+        item.id, !item.isVisible);
+    if (success) {
+      await _loadSliderImages();
+    }
+    return success;
+  }
+
   Future<bool> addGalleryImage(XFile file, String category) async {
     final success = await _contentService.addGalleryImage(file, category);
     if (success) {
@@ -250,6 +259,24 @@ class HomeViewModel extends ChangeNotifier {
     return success;
   }
 
+  Future<bool> toggleGalleryImageVisibility(GalleryImage item) async {
+    final success = await _contentService.updateGalleryImageVisibility(
+        item.id, !item.isVisible);
+    if (success) {
+      await _loadGallery();
+    }
+    return success;
+  }
+
+  Future<bool> updateGalleryImageOrder(GalleryImage item, int newOrder) async {
+    final success =
+        await _contentService.updateGalleryImageOrder(item.id, newOrder);
+    if (success) {
+      await _loadGallery();
+    }
+    return success;
+  }
+
   Future<bool> addActivity(String title, String description, String icon,
       {XFile? mediaFile}) async {
     final success = await _contentService.addActivity(title, description, icon,
@@ -262,6 +289,24 @@ class HomeViewModel extends ChangeNotifier {
 
   Future<bool> deleteActivity(String id) async {
     final success = await _contentService.deleteActivity(id);
+    if (success) {
+      await _loadActivities();
+    }
+    return success;
+  }
+
+  Future<bool> toggleActivityVisibility(Activity item) async {
+    final success =
+        await _contentService.updateActivityVisibility(item.id, !item.isVisible);
+    if (success) {
+      await _loadActivities();
+    }
+    return success;
+  }
+
+  Future<bool> updateActivityOrder(Activity item, int newOrder) async {
+    final success =
+        await _contentService.updateActivityOrder(item.id, newOrder);
     if (success) {
       await _loadActivities();
     }

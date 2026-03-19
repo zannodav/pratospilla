@@ -58,6 +58,13 @@ class _HomePageState extends State<HomePage> {
   DateTime _focusedDay = DateTime.now();
 
   @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _focusedDay = DateTime(now.year, now.month, now.day);
+  }
+
+  @override
   void dispose() {
     _viewModel.dispose();
     _nameController.dispose();
@@ -360,10 +367,31 @@ class _HomePageState extends State<HomePage> {
                               ? NetworkImage(item.url) as ImageProvider
                               : AssetImage(item.url),
                           fit: BoxFit.cover,
+                          colorFilter: item.isVisible
+                              ? null
+                              : ColorFilter.mode(
+                                  Colors.black.withValues(alpha: 0.4),
+                                  BlendMode.dstIn,
+                                ),
                         ),
                       ),
                     ),
-                    if (_viewModel.isSignedIn)
+                    if (_viewModel.isSignedIn) ...[
+                      Positioned(
+                        top: 30,
+                        left: 10,
+                        child: CircleAvatar(
+                          backgroundColor: Colors.white,
+                          child: IconButton(
+                            icon: Icon(
+                              item.isVisible ? Icons.visibility : Icons.visibility_off,
+                              color: item.isVisible ? Colors.teal : Colors.grey,
+                            ),
+                            onPressed: () =>
+                                _viewModel.toggleSliderImageVisibility(item),
+                          ),
+                        ),
+                      ),
                       Positioned(
                         top: 30,
                         right: 10,
@@ -376,6 +404,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       ),
+                    ],
                   ],
                 );
               }).toList(),
@@ -574,6 +603,10 @@ class _HomePageState extends State<HomePage> {
                                               Icons.image_not_supported),
                                         ),
                                       ),
+                                if (!img.isVisible)
+                                  Container(
+                                    color: Colors.white.withValues(alpha: 0.4),
+                                  ),
                                 Positioned(
                                   bottom: 0,
                                   left: 0,
@@ -621,6 +654,49 @@ class _HomePageState extends State<HomePage> {
                                 if (_viewModel.isSignedIn) ...[
                                   Positioned(
                                     top: 8,
+                                    left: 8,
+                                    child: GestureDetector(
+                                      onTap: () => _viewModel
+                                          .toggleGalleryImageVisibility(img),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.5),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          img.isVisible
+                                              ? Icons.visibility
+                                              : Icons.visibility_off,
+                                          color: img.isVisible
+                                              ? Colors.white
+                                              : Colors.grey.shade400,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 8,
+                                    left: 40,
+                                    child: GestureDetector(
+                                      onTap: () => _showGalleryOrderDialog(
+                                          context, img),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.5),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.low_priority,
+                                            color: Colors.white, size: 18),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 8,
                                     right: 8,
                                     child: GestureDetector(
                                       onTap: () =>
@@ -660,6 +736,10 @@ class _HomePageState extends State<HomePage> {
                                   onUpdateDescription: (id, desc) =>
                                       _viewModel.updateGalleryImageDescription(
                                           id, desc),
+                                  onToggleVisibility: (img) =>
+                                      _viewModel.toggleGalleryImageVisibility(img),
+                                  onToggleOrder: (img, val) =>
+                                      _viewModel.updateGalleryImageOrder(img, val),
                                 ),
                               ),
                             );
@@ -1119,9 +1199,11 @@ class _HomePageState extends State<HomePage> {
               const Center(child: CircularProgressIndicator())
             else
               TableCalendar(
-                firstDay: DateTime.now(),
+                firstDay: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
                 lastDay: DateTime.now().add(const Duration(days: 365)),
-                focusedDay: _focusedDay,
+                focusedDay: _focusedDay.isBefore(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)) 
+                    ? DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)
+                    : _focusedDay,
                 rangeSelectionMode: RangeSelectionMode.toggledOn,
                 rangeStartDay: _viewModel.checkInDate,
                 rangeEndDay: _viewModel.checkOutDate,
@@ -1423,50 +1505,95 @@ class _HomePageState extends State<HomePage> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 padding: const EdgeInsets.all(16),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(_getActivityIcon(item.icon),
-                                        color: Colors.teal, size: 32),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            item.title,
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 15),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            item.description,
-                                            style: const TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.black54),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
+                                child: Opacity(
+                                  opacity: item.isVisible ? 1.0 : 0.5,
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(_getActivityIcon(item.icon),
+                                          color: Colors.teal, size: 32),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              item.title,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 15),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              item.description,
+                                              style: const TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.black54),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            if (_viewModel.isSignedIn &&
+                                                !item.isVisible)
+                                              const Padding(
+                                                padding:
+                                                    EdgeInsets.only(top: 4),
+                                                child: Text(
+                                                  'NASCOSTO',
+                                                  style: TextStyle(
+                                                      color: Colors.red,
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.bold),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    if (_viewModel.isSignedIn)
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline,
-                                            color: Colors.redAccent, size: 20),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                        onPressed: () => _confirmDeleteActivity(
-                                            context, item.id),
-                                      )
-                                    else
-                                      const Icon(Icons.arrow_forward_ios,
-                                          size: 16, color: Colors.teal),
-                                  ],
+                                      if (_viewModel.isSignedIn) ...[
+                                        IconButton(
+                                          icon: const Icon(Icons.low_priority,
+                                              color: Colors.teal, size: 20),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          onPressed: () =>
+                                              _showActivityOrderDialog(
+                                                  context, item),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          icon: Icon(
+                                            item.isVisible
+                                                ? Icons.visibility
+                                                : Icons.visibility_off,
+                                            color: item.isVisible
+                                                ? Colors.teal
+                                                : Colors.grey,
+                                            size: 20,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          onPressed: () => _viewModel
+                                              .toggleActivityVisibility(item),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline,
+                                              color: Colors.redAccent,
+                                              size: 20),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          onPressed: () =>
+                                              _confirmDeleteActivity(
+                                                  context, item.id),
+                                        ),
+                                      ] else
+                                        const Icon(Icons.arrow_forward_ios,
+                                            size: 16, color: Colors.teal),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -1487,6 +1614,10 @@ class _HomePageState extends State<HomePage> {
                                     isAdmin: _viewModel.isSignedIn,
                                     onDelete: (id) =>
                                         _viewModel.deleteActivity(id),
+                                    onToggleVisibility: (item) =>
+                                        _viewModel.toggleActivityVisibility(item),
+                                    onToggleOrder: (item, val) =>
+                                        _viewModel.updateActivityOrder(item, val),
                                   ),
                                 ),
                               );
@@ -1513,6 +1644,88 @@ class _HomePageState extends State<HomePage> {
           ],
         );
       },
+    );
+  }
+
+  void _showGalleryOrderDialog(BuildContext context, GalleryImage item) {
+    final controller =
+        TextEditingController(text: item.orderIndex.toString());
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Imposta Ordine Galleria'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+                'Inserisci un numero per ordinare l\'immagine (numeri più bassi appaiono per primi).'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Indice Ordine',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final newOrder = int.tryParse(controller.text) ?? item.orderIndex;
+              _viewModel.updateGalleryImageOrder(item, newOrder);
+              Navigator.pop(context);
+            },
+            child: const Text('Salva'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showActivityOrderDialog(BuildContext context, Activity item) {
+    final controller =
+        TextEditingController(text: item.orderIndex.toString());
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Imposta Ordine'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+                'Inserisci un numero per ordinare l\'attività (numeri più bassi appaiono per primi).'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Indice Ordine',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final newOrder = int.tryParse(controller.text) ?? item.orderIndex;
+              _viewModel.updateActivityOrder(item, newOrder);
+              Navigator.pop(context);
+            },
+            child: const Text('Salva'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1679,13 +1892,15 @@ class _HomePageState extends State<HomePage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 8,
               children: [
                 const Text(
                   'Recensioni degli Ospiti',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(width: 12),
                 if (reviews.isNotEmpty)
                   Container(
                     padding:
@@ -1695,6 +1910,7 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.star,
                             color: Colors.amber.shade700, size: 18),

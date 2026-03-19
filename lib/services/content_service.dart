@@ -10,6 +10,8 @@ class GalleryImage {
   final String category;
   final DateTime date;
   final String? description;
+  final bool isVisible;
+  final int orderIndex;
 
   GalleryImage({
     required this.id,
@@ -17,6 +19,8 @@ class GalleryImage {
     required this.category,
     required this.date,
     this.description,
+    this.isVisible = true,
+    this.orderIndex = 0,
   });
 
   factory GalleryImage.fromFirestore(DocumentSnapshot doc) {
@@ -24,9 +28,11 @@ class GalleryImage {
     return GalleryImage(
       id: doc.id,
       url: data['url'] as String? ?? '',
-      category: data['category'] as String? ?? 'Interni',
+      category: data['category'] as String? ?? 'tutti',
       date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       description: data['description'] as String?,
+      isVisible: data['isVisible'] as bool? ?? true,
+      orderIndex: data['orderIndex'] as int? ?? 0,
     );
   }
 }
@@ -39,6 +45,8 @@ class Activity {
   final DateTime date;
   final String? mediaUrl;
   final String? mediaType;
+  final bool isVisible;
+  final int orderIndex;
 
   Activity({
     required this.id,
@@ -48,6 +56,8 @@ class Activity {
     required this.date,
     this.mediaUrl,
     this.mediaType,
+    this.isVisible = true,
+    this.orderIndex = 0,
   });
 
   factory Activity.fromFirestore(DocumentSnapshot doc) {
@@ -60,6 +70,8 @@ class Activity {
       date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       mediaUrl: data['mediaUrl'] as String?,
       mediaType: data['mediaType'] as String?,
+      isVisible: data['isVisible'] as bool? ?? true,
+      orderIndex: data['orderIndex'] as int? ?? 0,
     );
   }
 }
@@ -68,11 +80,13 @@ class SliderImage {
   final String id;
   final String url;
   final DateTime date;
+  final bool isVisible;
 
   SliderImage({
     required this.id,
     required this.url,
     required this.date,
+    this.isVisible = true,
   });
 
   factory SliderImage.fromFirestore(DocumentSnapshot doc) {
@@ -81,6 +95,7 @@ class SliderImage {
       id: doc.id,
       url: data['url'] as String? ?? '',
       date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isVisible: data['isVisible'] as bool? ?? true,
     );
   }
 }
@@ -144,22 +159,23 @@ class ContentService {
 
   /// --- SLIDER ---
 
-  Future<List<SliderImage>> fetchSliderImages() async {
-    debugPrint('🚀 fetchSliderImages: Tentativo recupero da Firestore...');
-    final snapshot = await _firestore
-        .collection('slider')
-        .get();
-    
-    if (snapshot.docs.isEmpty) {
-      debugPrint('ℹ️ Collezione "slider" vuota o inesistente su Firestore.');
-      return [];
-    }
+  Future<List<SliderImage>> fetchSliderImages({bool isAdmin = true}) async {
+    if (!_firestoreAvailable) return localSliderFallback;
+    try {
+      final snapshot = await _firestore.collection('slider').get();
+      final items = snapshot.docs.map((doc) => SliderImage.fromFirestore(doc)).toList();
+      
+      // Sort by date
+      items.sort((a, b) => b.date.compareTo(a.date));
 
-    final slides = snapshot.docs
-        .map((doc) => SliderImage.fromFirestore(doc))
-        .toList();
-    debugPrint('✅ Recuperate ${slides.length} slide da Firestore.');
-    return slides;
+      if (!isAdmin) {
+        return items.where((i) => i.isVisible).toList();
+      }
+      return items;
+    } catch (e) {
+      debugPrint('Firestore slider fetch failed: $e');
+      return localSliderFallback;
+    }
   }
 
   Future<bool> addSliderImage(XFile file) async {
@@ -181,6 +197,7 @@ class ContentService {
       await _firestore.collection('slider').add({
         'url': url,
         'date': Timestamp.now(),
+        'isVisible': true,
       });
       return true;
     } catch (e) {
@@ -199,20 +216,39 @@ class ContentService {
     }
   }
 
+  Future<bool> updateSliderImageVisibility(String id, bool isVisible) async {
+    try {
+      await _firestore.collection('slider').doc(id).update({
+        'isVisible': isVisible,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error updating slider image visibility: $e');
+      return false;
+    }
+  }
+
   /// --- GALLERY ---
 
-  Future<List<GalleryImage>> fetchGallery() async {
+  Future<List<GalleryImage>> fetchGallery({bool isAdmin = true}) async {
+    if (!_firestoreAvailable) return _localGallery;
     try {
-      final snapshot = await _firestore
-          .collection('gallery')
-          .orderBy('date', descending: true)
-          .get();
-      if (snapshot.docs.isEmpty) return _localGallery;
-      return snapshot.docs
-          .map((doc) => GalleryImage.fromFirestore(doc))
-          .toList();
+      final snapshot = await _firestore.collection('gallery').get();
+      final items = snapshot.docs.map((doc) => GalleryImage.fromFirestore(doc)).toList();
+      
+      // Sort by orderIndex then date
+      items.sort((a, b) {
+        int cmp = a.orderIndex.compareTo(b.orderIndex);
+        if (cmp == 0) return b.date.compareTo(a.date);
+        return cmp;
+      });
+
+      if (!isAdmin) {
+        return items.where((i) => i.isVisible).toList();
+      }
+      return items;
     } catch (e) {
-      debugPrint('⚠️ Errore recupero gallery: $e');
+      debugPrint('Firestore gallery fetch failed: $e');
       return _localGallery;
     }
   }
@@ -268,19 +304,40 @@ class ContentService {
     }
   }
 
+  Future<bool> updateGalleryImageVisibility(String id, bool isVisible) async {
+    try {
+      await _firestore.collection('gallery').doc(id).update({
+        'isVisible': isVisible,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error updating gallery image visibility: $e');
+      return false;
+    }
+  }
+
   /// --- ACTIVITIES ---
 
-  Future<List<Activity>> fetchActivities() async {
+  Future<List<Activity>> fetchActivities({bool isAdmin = true}) async {
     if (!_firestoreAvailable) return _localActivities;
     try {
-      final snapshot = await _firestore
-          .collection('activities')
-          .orderBy('date', descending: true)
-          .get();
-      if (snapshot.docs.isEmpty) return _localActivities;
-      return snapshot.docs.map((doc) => Activity.fromFirestore(doc)).toList();
+      // Fetch all and sort/filter in-memory to avoid index issues for guests
+      final snapshot = await _firestore.collection('activities').get();
+      final items = snapshot.docs.map((doc) => Activity.fromFirestore(doc)).toList();
+      
+      // Sort by orderIndex then date
+      items.sort((a, b) {
+        int cmp = a.orderIndex.compareTo(b.orderIndex);
+        if (cmp == 0) return b.date.compareTo(a.date);
+        return cmp;
+      });
+
+      if (!isAdmin) {
+        return items.where((i) => i.isVisible).toList();
+      }
+      return items;
     } catch (e) {
-      _firestoreAvailable = false;
+      debugPrint('Firestore activities fetch failed: $e');
       return _localActivities;
     }
   }
@@ -335,6 +392,45 @@ class ContentService {
       return true;
     } catch (e) {
       debugPrint('Error deleting activity: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateActivityVisibility(String id, bool isVisible) async {
+    try {
+      await _firestore
+          .collection('activities')
+          .doc(id)
+          .update({'isVisible': isVisible});
+      return true;
+    } catch (e) {
+      debugPrint('Error updating activity visibility: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateGalleryImageOrder(String id, int orderIndex) async {
+    try {
+      await _firestore
+          .collection('gallery')
+          .doc(id)
+          .update({'orderIndex': orderIndex});
+      return true;
+    } catch (e) {
+      debugPrint('Error updating gallery image order: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateActivityOrder(String id, int orderIndex) async {
+    try {
+      await _firestore
+          .collection('activities')
+          .doc(id)
+          .update({'orderIndex': orderIndex});
+      return true;
+    } catch (e) {
+      debugPrint('Error updating activity order: $e');
       return false;
     }
   }
