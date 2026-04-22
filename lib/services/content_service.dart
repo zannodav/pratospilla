@@ -105,7 +105,7 @@ class ContentService {
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   FirebaseStorage get _storage => FirebaseStorage.instance;
 
-  bool _firestoreAvailable = true;
+  final bool _firestoreAvailable = true;
 
   // Mock data as fallback
   final List<GalleryImage> _localGallery = [
@@ -163,8 +163,9 @@ class ContentService {
     if (!_firestoreAvailable) return localSliderFallback;
     try {
       final snapshot = await _firestore.collection('slider').get();
-      final items = snapshot.docs.map((doc) => SliderImage.fromFirestore(doc)).toList();
-      
+      final items =
+          snapshot.docs.map((doc) => SliderImage.fromFirestore(doc)).toList();
+
       // Sort by date
       items.sort((a, b) => b.date.compareTo(a.date));
 
@@ -234,8 +235,9 @@ class ContentService {
     if (!_firestoreAvailable) return _localGallery;
     try {
       final snapshot = await _firestore.collection('gallery').get();
-      final items = snapshot.docs.map((doc) => GalleryImage.fromFirestore(doc)).toList();
-      
+      final items =
+          snapshot.docs.map((doc) => GalleryImage.fromFirestore(doc)).toList();
+
       // Sort by orderIndex then date
       items.sort((a, b) {
         int cmp = a.orderIndex.compareTo(b.orderIndex);
@@ -323,8 +325,9 @@ class ContentService {
     try {
       // Fetch all and sort/filter in-memory to avoid index issues for guests
       final snapshot = await _firestore.collection('activities').get();
-      final items = snapshot.docs.map((doc) => Activity.fromFirestore(doc)).toList();
-      
+      final items =
+          snapshot.docs.map((doc) => Activity.fromFirestore(doc)).toList();
+
       // Sort by orderIndex then date
       items.sort((a, b) {
         int cmp = a.orderIndex.compareTo(b.orderIndex);
@@ -447,8 +450,7 @@ class ContentService {
 
   Future<Map<String, String>> fetchHeroText() async {
     try {
-      final doc =
-          await _firestore.collection('settings').doc('hero').get();
+      final doc = await _firestore.collection('settings').doc('hero').get();
       if (doc.exists) {
         final data = doc.data()!;
         return {
